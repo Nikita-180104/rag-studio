@@ -1,0 +1,182 @@
+[
+  {
+    "question": "What consensus engine does Project Antigravity run on?",
+    "ground_truth": "Project Antigravity runs on a custom consensus engine named 'GravityConsensus'.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "1"
+  },
+  {
+    "question": "What is the finality time for the GravityConsensus engine?",
+    "ground_truth": "The GravityConsensus engine achieves finality in under 800 milliseconds.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "1"
+  },
+  {
+    "question": "What is the maximum transaction processing throughput under peak load?",
+    "ground_truth": "Under peak load, the throughput capacity is up to 45,000 transactions per second (TPS) without experiencing significant state latency.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "2"
+  },
+  {
+    "question": "How is data secured at rest in Project Antigravity?",
+    "ground_truth": "Data is encrypted at rest using the AES-256-GCM standard.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "3"
+  },
+  {
+    "question": "What protocol is used for node-to-node communication in Project Antigravity?",
+    "ground_truth": "All communication across nodes uses mutual TLS (mTLS).",
+    "reference_source": "sample_doc.md",
+    "reference_page": "3"
+  },
+  {
+    "question": "What kind of certificates are required for cross-node TLS communication?",
+    "ground_truth": "Cross-node communication uses ECDSA-based certificates.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "3"
+  },
+  {
+    "question": "What is the minimum CPU requirement for a validator node?",
+    "ground_truth": "Each validator node must run on a minimum of 16 vCPUs.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "4"
+  },
+  {
+    "question": "How much memory does a validator node require in Project Antigravity?",
+    "ground_truth": "Each validator node requires a minimum of 64GB of RAM.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "4"
+  },
+  {
+    "question": "What storage medium is required for validator nodes?",
+    "ground_truth": "Validator nodes require nvme-backed storage.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "4"
+  },
+  {
+    "question": "Why is NVMe storage required for Project Antigravity validator nodes?",
+    "ground_truth": "NVMe storage is required to handle high write-amplification.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "4"
+  },
+  {
+    "question": "Is Project Antigravity designed for financial transactions?",
+    "ground_truth": "Yes, Project Antigravity is a production-grade distributed ledger designed for high-throughput financial transactions.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "1"
+  },
+  {
+    "question": "What type of consensus does Project Antigravity use?",
+    "ground_truth": "Project Antigravity uses a custom consensus engine named 'GravityConsensus'.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "1"
+  },
+  {
+    "question": "Does GravityConsensus achieve finality in over a second?",
+    "ground_truth": "No, GravityConsensus achieves finality in under 800 milliseconds.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "1"
+  },
+  {
+    "question": "What standard encrypts data at rest?",
+    "ground_truth": "AES-256-GCM encrypts data at rest.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "3"
+  },
+  {
+    "question": "Are ECDSA certificates used for communication?",
+    "ground_truth": "Yes, communication across the nodes uses ECDSA-based certificates.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "3"
+  },
+  {
+    "question": "What is the peak load transaction speed?",
+    "ground_truth": "Under peak load, the ledger is capable of processing up to 45,000 transactions per second (TPS).",
+    "reference_source": "sample_doc.md",
+    "reference_page": "2"
+  },
+  {
+    "question": "What is the minimum hardware spec for RAM?",
+    "ground_truth": "Validator nodes require a minimum of 64GB of RAM.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "4"
+  },
+  {
+    "question": "What consensus achieves sub-second finality?",
+    "ground_truth": "The custom consensus engine named 'GravityConsensus' achieves sub-second finality (under 800 milliseconds).",
+    "reference_source": "sample_doc.md",
+    "reference_page": "1"
+  },
+  {
+    "question": "What is the capital city of France?",
+    "ground_truth": "I don't know based on the provided documents.",
+    "reference_source": "N/A",
+    "reference_page": "N/A"
+  },
+  {
+    "question": "How do you configure a validator node using Docker Compose?",
+    "ground_truth": "I don't know based on the provided documents.",
+    "reference_source": "N/A",
+    "reference_page": "N/A"
+  },
+  {
+    "question": "Who is the lead architect of Project Antigravity?",
+    "ground_truth": "I don't know based on the provided documents.",
+    "reference_source": "N/A",
+    "reference_page": "N/A"
+  },
+  {
+    "question": "What programming language is the custom consensus engine written in?",
+    "ground_truth": "I don't know based on the provided documents.",
+    "reference_source": "N/A",
+    "reference_page": "N/A"
+  },
+  {
+    "question": "How does Project Antigravity handle state pruning for historical records?",
+    "ground_truth": "I don't know based on the provided documents.",
+    "reference_source": "N/A",
+    "reference_page": "N/A"
+  },
+  {
+    "question": "What is the tokenomics and total supply of the native ledger utility token?",
+    "ground_truth": "I don't know based on the provided documents.",
+    "reference_source": "N/A",
+    "reference_page": "N/A"
+  },
+  {
+    "question": "Does Project Antigravity support solidity smart contracts?",
+    "ground_truth": "I don't know based on the provided documents.",
+    "reference_source": "N/A",
+    "reference_page": "N/A"
+  },
+  {
+    "question": "What consensus engine does Project Antigravity use, and how is its cross-node communication secured?",
+    "ground_truth": "Project Antigravity uses the custom 'GravityConsensus' engine, and its cross-node communication is secured using mutual TLS (mTLS) with ECDSA-based certificates.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "1, 3"
+  },
+  {
+    "question": "What are the throughput capacity and minimum validator memory requirements under peak load?",
+    "ground_truth": "Under peak load, Project Antigravity has a throughput capacity of up to 45,000 transactions per second (TPS) and requires validator nodes to have a minimum of 64GB of RAM.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "2, 4"
+  },
+  {
+    "question": "Can you outline the security model at rest and cross-node communication details for Project Antigravity?",
+    "ground_truth": "At rest, data is encrypted using AES-256-GCM. Cross-node communication uses mutual TLS (mTLS) with ECDSA-based certificates.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "3"
+  },
+  {
+    "question": "What are the latency, throughput, and CPU specifications for validator nodes?",
+    "ground_truth": "The consensus achieves finality latency under 800 milliseconds, processes up to 45,000 TPS under peak load, and validator nodes require a minimum of 16 vCPUs.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "1, 2, 4"
+  },
+  {
+    "question": "What storage and memory specifications does Project Antigravity require to handle write-amplification?",
+    "ground_truth": "To handle high write-amplification, validator nodes require nvme-backed storage and a minimum of 64GB of RAM.",
+    "reference_source": "sample_doc.md",
+    "reference_page": "4"
+  }
+]

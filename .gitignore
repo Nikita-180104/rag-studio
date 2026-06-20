@@ -1,0 +1,65 @@
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.toast
+.lucy
+.pytest_cache/
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.npm
+.eslintcache
+.parcel-cache
+.vite
+.next
+.nuxt
+
+# Databases & Vector Stores
+backend/data/chroma/
+backend/data/rag_cache.db
+backend/data/eval_results.json
+*.db
+*.sqlite3
+
+# IDE / Editor Settings
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Planning and Artifacts
+implementation_plan.md
+task.md
+walkthrough.md
+.gemini/

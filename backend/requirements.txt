@@ -1,0 +1,31 @@
+# Orchestration
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-community>=0.2.0
+langchain-google-genai>=1.0.0
+
+# Vector DB
+chromadb>=0.4.0
+langchain-chroma>=0.1.0
+rank_bm25>=0.2.2
+weaviate-client>=4.0.0
+langchain-weaviate>=0.0.2
+
+# Embeddings
+sentence-transformers>=3.0.0
+
+# Ingestion / Loaders
+pypdf>=4.0.0
+unstructured>=0.14.0
+
+# Config Management
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+python-dotenv>=1.0.0
+
+# Phase 3 Production & Evaluation
+ragas>=0.1.0
+pandas>=2.0.0
+fastapi>=0.110.0
+uvicorn>=0.28.0
+slowapi>=0.1.9
