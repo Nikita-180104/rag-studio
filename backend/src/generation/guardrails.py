@@ -37,7 +37,7 @@ class CitationGuardrail:
         # Initialize the grounding verification LLM.
         # We use temperature=0 for absolute deterministic verification.
         self.verifier_llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model=settings.active_llm_model,
             google_api_key=settings.google_api_key,
             temperature=0,
             max_tokens=512,

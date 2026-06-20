@@ -51,7 +51,7 @@ class GenerationPipeline:
         # We use temperature=0 because in RAG, we want factual grounding, not creative writing.
         try:
             self.llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
+                model=settings.active_llm_model,
                 google_api_key=settings.google_api_key,
                 temperature=0,
                 max_tokens=1024,
@@ -187,7 +187,7 @@ class GenerationPipeline:
             formatted_context = self._format_docs(docs)
             
             # 5. Invoke LLM Generation
-            logger.info("Context is relevant. Invoking gemini-2.5-flash for answer generation...")
+            logger.info(f"Context is relevant. Invoking {settings.active_llm_model} for answer generation...")
             try:
                 prompt_input = self.prompt.format_messages(
                     context=formatted_context,
@@ -271,11 +271,11 @@ class GenerationPipeline:
         """Compiles exact elapsed times, token counts, and transaction costs."""
         elapsed = time.time() - start_time
         
-        # Pricing metrics for gemini-2.5-flash:
-        # Input tokens: $0.30 / 1M tokens ($0.00000030 / token)
-        # Output tokens: $2.50 / 1M tokens ($0.00000250 / token)
-        input_cost = input_tokens * 0.00000030
-        output_cost = output_tokens * 0.00000250
+        # Pricing metrics for gemini-2.5-flash-lite:
+        # Input tokens: $0.10 / 1M tokens ($0.00000010 / token)
+        # Output tokens: $0.40 / 1M tokens ($0.00000040 / token)
+        input_cost = input_tokens * 0.00000010
+        output_cost = output_tokens * 0.00000040
         total_cost = input_cost + output_cost
         
         return {

@@ -11,11 +11,20 @@ os.environ["TRANSFORMERS_NO_TF"] = "1"
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
+from pathlib import Path
+
+# Centralized base directory (backend/)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 class Settings(BaseSettings):
     # LLM Settings
     google_api_key: str = Field(
         default="your_gemini_api_key_here", 
         description="Google Gemini API Key"
+    )
+    active_llm_model: str = Field(
+        default="gemini-2.5-flash-lite",
+        description="Active Gemini LLM model ID"
     )
     
     # Vector DB Settings
@@ -24,8 +33,12 @@ class Settings(BaseSettings):
         description="Vector database provider (chroma or weaviate)"
     )
     chroma_db_dir: str = Field(
-        default="d:/RAG/backend/data/chroma",
+        default=str(BASE_DIR / "data" / "chroma"),
         description="Directory to store Chroma DB files"
+    )
+    rag_cache_db_path: str = Field(
+        default=str(BASE_DIR / "data" / "rag_cache.db"),
+        description="Path to SQLite RAG Cache database file"
     )
     weaviate_url: str = Field(
         default="http://localhost:8080", 

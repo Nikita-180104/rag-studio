@@ -7,6 +7,8 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+from config import settings
+
 class SQLiteRAGCache:
     """
     SQLite-backed precise cache for RAG responses.
@@ -14,8 +16,8 @@ class SQLiteRAGCache:
     and the prompt version. Cache lookup is invalidated/missed if prompt version differs.
     """
     
-    def __init__(self, db_path: str = "d:/RAG/backend/data/rag_cache.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path or settings.rag_cache_db_path
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._init_db()
         

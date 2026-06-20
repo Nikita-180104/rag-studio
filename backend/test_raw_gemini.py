@@ -7,7 +7,7 @@ print(f"Testing direct Gemini SDK with API Key: {settings.google_api_key[:10]}..
 genai.configure(api_key=settings.google_api_key)
 
 try:
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel('gemini-2.5-flash-lite')
     response = model.generate_content("Say 'Test successful!' in exactly 2 words.")
     print("Success:", response.text)
 except Exception as e:
