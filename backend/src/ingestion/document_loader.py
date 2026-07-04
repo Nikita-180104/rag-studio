@@ -25,7 +25,7 @@ class UniversalDocumentLoader:
         self.loaders = {
             ".pdf": PyPDFLoader,
             ".txt": TextLoader,
-            ".md": UnstructuredMarkdownLoader,
+            ".md": TextLoader,
             ".docx": UnstructuredWordDocumentLoader,
         }
 
