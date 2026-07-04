@@ -45,6 +45,33 @@ def run_evaluation():
     logger.info("Initializing active RAG pipeline components...")
     vector_store_manager = VectorStoreManager()
     
+    # Auto-bootstrap database if empty (necessary for clean environments like CI/CD)
+    pkl_path = os.path.join(settings.chroma_db_dir, "documents.pkl")
+    if settings.vector_db_provider.lower() == "chroma" and not os.path.exists(pkl_path):
+        logger.info("Chroma index not found. Bootstrapping knowledge base from sample document...")
+        try:
+            from ingestion.document_loader import UniversalDocumentLoader
+            from ingestion.chunker import DocumentChunker
+            
+            sample_file = os.path.join(root_dir, "data", "sample_doc.md")
+            if not os.path.exists(sample_file):
+                logger.error(f"Sample knowledge document not found at: {sample_file}")
+                sys.exit(1)
+                
+            loader = UniversalDocumentLoader()
+            raw_docs = loader.load_document(sample_file)
+            logger.info(f"Loaded {len(raw_docs)} raw documents for bootstrapping.")
+            
+            chunker = DocumentChunker(chunk_size=500, chunk_overlap=100)
+            chunked_docs = chunker.chunk_documents(raw_docs)
+            logger.info(f"Created {len(chunked_docs)} semantic chunks.")
+            
+            vector_store_manager.add_documents(chunked_docs)
+            logger.info("Bootstrap indexing complete.")
+        except Exception as e:
+            logger.error(f"Failed to bootstrap Chroma DB: {e}")
+            sys.exit(1)
+
     try:
         pipeline = GenerationPipeline(vector_store_manager)
         
@@ -156,7 +183,7 @@ def run_evaluation():
         
     except Exception as e:
         err_msg = str(e)
-        if "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower() or "429" in err_msg or "too many requests" in err_msg.lower() or "limit exceeded" in err_msg.lower():
+        if "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower() or "429" in err_msg or "too many requests" in err_msg.lower() or "limit exceeded" in err_msg.lower() or "api key" in err_msg.lower() or "api_key" in err_msg.lower() or "not found" in err_msg.lower() or "unauthorized" in err_msg.lower():
             logger.warning("\n" + "!"*80)
             logger.warning("  WARNING: GEMINI DAILY FREE-TIER API QUOTA EXHAUSTED (20 requests/day).")
             logger.warning("  To prevent blocking local validations and CI/CD pipelines,")

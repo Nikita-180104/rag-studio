@@ -28,6 +28,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Ingest Knowledge Base
+      run: |
+        python -c "import sys, os; sys.path.append('src'); from retrieval.vector_store import VectorStoreManager; from ingestion.document_loader import UniversalDocumentLoader; from ingestion.chunker import DocumentChunker; db = VectorStoreManager(); loader = UniversalDocumentLoader(); docs = loader.load_document('data/sample_doc.md'); chunked = DocumentChunker(chunk_size=500, chunk_overlap=100).chunk_documents(docs); db.add_documents(chunked); db.close()"
+
     - name: Run Ragas Offline Evaluation
       env:
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
