@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create a centralized Axios instance configured for the localhost FastAPI backend
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
   },
