@@ -26,6 +26,18 @@ class Settings(BaseSettings):
         default="gemini-2.5-flash-lite",
         description="Active Gemini LLM model ID"
     )
+    llm_provider: str = Field(
+        default="google",
+        description="LLM provider (google or groq)"
+    )
+    groq_api_key: str = Field(
+        default="your_groq_api_key_here", 
+        description="Groq API Key"
+    )
+    groq_model_name: str = Field(
+        default="llama-3.3-70b-versatile",
+        description="Active Groq LLM model ID"
+    )
     
     # Vector DB Settings
     vector_db_provider: str = Field(
@@ -64,6 +76,10 @@ class Settings(BaseSettings):
         default="cross-encoder/ms-marco-MiniLM-L-6-v2",
         description="Local Cross-Encoder model ID for candidate re-scoring"
     )
+    top_n_context: int = Field(
+        default=8,
+        description="Number of final context chunks to send to the LLM (after re-ranking)"
+    )
     
     # Grounding Settings
     min_relevance_score: float = Field(
@@ -73,7 +89,7 @@ class Settings(BaseSettings):
     
     # Prompt Settings
     active_prompt_version: str = Field(
-        default="v1",
+        default="v3",
         description="Active prompt version ID from prompts.yaml"
     )
     

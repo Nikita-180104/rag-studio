@@ -1,6 +1,6 @@
-# Project Antigravity - System Overview
+# GroundLens AI - System Overview
 
-Project Antigravity is a production-grade distributed ledger designed for high-throughput financial transactions. The system operates on a custom consensus engine named "GravityConsensus", which achieves finality in under 800 milliseconds [Page: 1].
+GroundLens AI is a production-grade distributed ledger designed for high-throughput financial transactions. The system operates on a custom consensus engine named "GravityConsensus", which achieves finality in under 800 milliseconds [Page: 1].
 
 ## Architectural Specifications
 

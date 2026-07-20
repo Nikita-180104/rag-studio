@@ -29,7 +29,7 @@ export default function MessageBubble({ message }) {
         <span className={`text-[9px] font-bold uppercase tracking-widest text-gray-500 ${
           isUser ? 'text-right' : 'text-left'
         }`}>
-          {isUser ? 'You' : 'Antigravity AI Agent'}
+          {isUser ? 'You' : 'GroundLens AI Agent'}
         </span>
 
         {/* Text body bubble */}

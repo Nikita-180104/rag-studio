@@ -3,7 +3,8 @@ import HealthBar from './components/HealthBar';
 import ChatWindow from './components/ChatWindow';
 import TelemetryPanel from './components/TelemetryPanel';
 import { checkHealth, queryRAG, clearCache } from './api/ragApi';
-import { X, Info, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, Info, CheckCircle, AlertTriangle, Database } from 'lucide-react';
+import KbPanel from './components/KbPanel';
 import './App.css';
 
 /**
@@ -18,6 +19,7 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(false);
   const [activeTelemetry, setActiveTelemetry] = useState(null);
   const [isTelemetryOpen, setIsTelemetryOpen] = useState(true);
+  const [isKbOpen, setIsKbOpen] = useState(true);
   const [toasts, setToasts] = useState([]);
 
   // Emits a custom, premium toast alert
@@ -73,13 +75,19 @@ export default function App() {
   const handleSendMessage = async (text) => {
     if (loading || !isOnline) return;
 
+    // Map current message thread history to role/content pairs for backend condensation
+    const history = messages.map((msg) => ({
+      role: msg.role,
+      content: msg.text,
+    }));
+
     // Append User query message to log
     const userMessage = { role: 'user', text };
     setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
 
     try {
-      const res = await queryRAG(text);
+      const res = await queryRAG(text, history);
       
       // Append AI response containing citations
       const aiMessage = {
@@ -139,6 +147,14 @@ export default function App() {
 
       {/* Main content split panel */}
       <div className="flex flex-1 overflow-hidden relative">
+        {/* Knowledge Base Panel */}
+        <KbPanel
+          isOpen={isKbOpen}
+          onClose={() => setIsKbOpen(false)}
+          isOnline={isOnline}
+          showToast={showToast}
+        />
+
         {/* Chat Window viewport */}
         <ChatWindow
           messages={messages}
@@ -153,6 +169,17 @@ export default function App() {
           isOpen={isTelemetryOpen}
           onClose={() => setIsTelemetryOpen(false)}
         />
+
+        {/* Knowledge Base sidebar toggle trigger button */}
+        {!isKbOpen && (
+          <button
+            onClick={() => setIsKbOpen(true)}
+            className="absolute left-4 top-4 z-40 bg-darkPanel text-userBubble hover:text-white border border-darkBorder hover:border-userBubble rounded-full p-2.5 shadow-xl transition-all duration-200 cursor-pointer active:scale-90"
+            title="Open Knowledge Base"
+          >
+            <Database className="h-5 w-5" />
+          </button>
+        )}
 
         {/* Telemetry sidebar toggle trigger button */}
         {activeTelemetry && !isTelemetryOpen && (

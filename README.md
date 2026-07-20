@@ -1,4 +1,4 @@
-# Project Antigravity: Production RAG Studio
+# GroundLens AI: Production RAG Studio
 
 An enterprise-grade, domain-specific Retrieval-Augmented Generation (RAG) system featuring high-precision document chunking, hybrid keyword/vector search, Cross-Encoder re-ranking, and double-layer grounding guardrails to eliminate hallucinations. 
 

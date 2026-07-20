@@ -34,15 +34,31 @@ class CitationGuardrail:
     def __init__(self):
         logger.info("Initializing Citation Guardrail System...")
         
-        # Initialize the grounding verification LLM.
+        # Initialize the grounding verification LLM based on provider
         # We use temperature=0 for absolute deterministic verification.
-        self.verifier_llm = ChatGoogleGenerativeAI(
-            model=settings.active_llm_model,
-            google_api_key=settings.google_api_key,
-            temperature=0,
-            max_tokens=512,
-            max_retries=2,
-        )
+        provider = settings.llm_provider.lower()
+        try:
+            if provider == "groq":
+                from langchain_groq import ChatGroq
+                self.verifier_llm = ChatGroq(
+                    model=settings.groq_model_name,
+                    api_key=settings.groq_api_key,
+                    temperature=0,
+                    max_tokens=512,
+                    max_retries=2,
+                )
+            else:
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                self.verifier_llm = ChatGoogleGenerativeAI(
+                    model=settings.active_llm_model,
+                    google_api_key=settings.google_api_key,
+                    temperature=0,
+                    max_tokens=512,
+                    max_retries=2,
+                )
+        except Exception as e:
+            logger.error(f"Failed to initialize verifier LLM ({provider}): {e}")
+            raise
         
         # Define the strict grounding evaluation prompt template
         self.grounding_prompt = ChatPromptTemplate.from_messages([

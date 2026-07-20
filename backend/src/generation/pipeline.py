@@ -12,6 +12,20 @@ from utils.errors import RAGException, RetrievalError, GenerationError
 
 logger = logging.getLogger(__name__)
 
+CONDENSE_PROMPT_TEMPLATE = """Given the following conversation history and a follow-up question, rephrase the follow-up question to be a standalone question (which can be understood without context).
+
+Guidelines:
+1. If the follow-up question references pronouns, abbreviations, or context from the chat history (e.g., "what happens before it?", "explain that step"), rewrite it to be explicit using terms from the history.
+2. If the follow-up question introduces a completely new topic, asks about a different document, or does not refer to the history (e.g., "give summary of the git sheat document", "what is git?"), do NOT merge it with the history. Keep the original question's intent intact and only correct minor spelling errors (e.g. "git sheat" -> "git cheat sheet") or make it a clear standalone search query.
+3. Do NOT reply to the question, just return the rephrased standalone question.
+
+Chat History:
+{chat_history}
+
+Follow-up Question: {question}
+
+Standalone Question:"""
+
 class GenerationPipeline:
     """
     Constructs the modular, highly configurable production RAG pipeline.
@@ -29,12 +43,12 @@ class GenerationPipeline:
                 from retrieval.re_ranker import LocalCrossEncoderReranker
                 from langchain_classic.retrievers import ContextualCompressionRetriever
                 
-                logger.info("Cascade Retrieval enabled: Retrieving top-20 candidates and re-ranking to top-4 using Cross-Encoder.")
+                logger.info(f"Cascade Retrieval enabled: Retrieving top-20 candidates and re-ranking to top-{settings.top_n_context} using Cross-Encoder.")
                 
                 base_retriever = self.vector_store_manager.get_retriever(k=20)
                 reranker = LocalCrossEncoderReranker(
                     model_name=settings.reranker_model_name,
-                    top_n=4
+                    top_n=settings.top_n_context
                 )
                 
                 self.retriever = ContextualCompressionRetriever(
@@ -42,23 +56,33 @@ class GenerationPipeline:
                     base_retriever=base_retriever
                 )
             else:
-                logger.info("Direct Retrieval enabled: Retrieving top-4 candidates from Vector DB.")
-                self.retriever = self.vector_store_manager.get_retriever(k=4)
+                logger.info(f"Direct Retrieval enabled: Retrieving top-{settings.top_n_context} candidates from Vector DB.")
+                self.retriever = self.vector_store_manager.get_retriever(k=settings.top_n_context)
         except Exception as e:
             raise RetrievalError(f"Failed to compile RAG pipeline retriever: {e}") from e
         
-        # Initialize Gemini LLM. 
-        # We use temperature=0 because in RAG, we want factual grounding, not creative writing.
+        # Initialize LLM based on configured provider
+        provider = settings.llm_provider.lower()
         try:
-            self.llm = ChatGoogleGenerativeAI(
-                model=settings.active_llm_model,
-                google_api_key=settings.google_api_key,
-                temperature=0,
-                max_tokens=1024,
-                max_retries=2,
-            )
+            if provider == "groq":
+                from langchain_groq import ChatGroq
+                self.llm = ChatGroq(
+                    model=settings.groq_model_name,
+                    api_key=settings.groq_api_key,
+                    temperature=0,
+                    max_tokens=1024,
+                    max_retries=2,
+                )
+            else:
+                self.llm = ChatGoogleGenerativeAI(
+                    model=settings.active_llm_model,
+                    google_api_key=settings.google_api_key,
+                    temperature=0,
+                    max_tokens=1024,
+                    max_retries=2,
+                )
         except Exception as e:
-            raise GenerationError(f"Failed to initialize ChatGoogleGenerativeAI model: {e}") from e
+            raise GenerationError(f"Failed to initialize LLM ({provider}): {e}") from e
         
         # Initialize the prompt manager and load active version dynamically from prompts.yaml
         try:
@@ -96,7 +120,12 @@ class GenerationPipeline:
             
         return "\n\n---\n\n".join(formatted_chunks)
 
-    def answer_question(self, question: str, search_filter: Dict[str, Any] = None) -> Dict[str, Any]:
+    def answer_question(
+        self, 
+        question: str, 
+        search_filter: Dict[str, Any] = None, 
+        history: List[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
         """
         Executes the Q&A pipeline for a given question with two-layer grounding protection,
         dynamic query-time metadata filtering, and comprehensive telemetry metrics.
@@ -111,6 +140,22 @@ class GenerationPipeline:
         """
         start_time = time.time()
         logger.info(f"Processing query: '{question}'")
+        
+        # Resolve search query (reformulate if history is present to resolve pronouns/references)
+        search_query = question
+        if history and len(history) > 0:
+            try:
+                formatted_history = "\n".join([f"{msg['role'].upper()}: {msg['content']}" for msg in history])
+                condense_prompt = CONDENSE_PROMPT_TEMPLATE.format(
+                    chat_history=formatted_history,
+                    question=question
+                )
+                condense_res = self.llm.invoke(condense_prompt)
+                search_query = condense_res.content.strip()
+                logger.info(f"Query reformulated from '{question}' to stand-alone query: '{search_query}'")
+            except Exception as e:
+                logger.error(f"Failed to condense query, falling back to original: {e}")
+                search_query = question
         
         # Default telemetry metrics
         candidates_count = 0
@@ -131,21 +176,29 @@ class GenerationPipeline:
                     base_retriever = self.vector_store_manager.get_retriever(k=20, search_filter=search_filter)
                     reranker = LocalCrossEncoderReranker(
                         model_name=settings.reranker_model_name,
-                        top_n=4
+                        top_n=settings.top_n_context
                     )
                     active_retriever = ContextualCompressionRetriever(
                         base_compressor=reranker,
                         base_retriever=base_retriever
                     )
                 else:
-                    active_retriever = self.vector_store_manager.get_retriever(k=4, search_filter=search_filter)
+                    active_retriever = self.vector_store_manager.get_retriever(k=settings.top_n_context, search_filter=search_filter)
             else:
                 active_retriever = self.retriever
             
-            # 2. Retrieve candidates
+            # 2. Retrieve candidates using the standalone search query
             try:
-                docs = active_retriever.invoke(question)
+                docs = active_retriever.invoke(search_query)
                 candidates_count = len(docs)
+                logger.info(f"Raw retrieval returned {candidates_count} candidate chunks:")
+                for idx, doc in enumerate(docs):
+                    source = doc.metadata.get('source', 'Unknown')
+                    filename = source.split('\\')[-1].split('/')[-1]
+                    page = doc.metadata.get('page', -1)
+                    if isinstance(page, int):
+                        page = page + 1
+                    logger.info(f"  [Raw Doc {idx+1}] Source: {filename}, Page: {page}, Snippet: {doc.page_content[:100].replace(chr(10), ' ')}...")
             except Exception as e:
                 raise RetrievalError(f"Database query failure: {e}") from e
             
@@ -185,21 +238,41 @@ class GenerationPipeline:
             
             # 4. Format context chunks
             formatted_context = self._format_docs(docs)
+            logger.info("Re-ranked high-precision chunks selected for LLM Context:")
+            for idx, doc in enumerate(docs):
+                source = doc.metadata.get('source', 'Unknown')
+                filename = source.split('\\')[-1].split('/')[-1]
+                page = doc.metadata.get('page', -1)
+                if isinstance(page, int):
+                    page = page + 1
+                score = doc.metadata.get('re_rank_score', 0.0)
+                logger.info(f"  [Context Doc {idx+1}] Source: {filename}, Page: {page}, Score: {score:.4f}, Snippet: {doc.page_content[:100].replace(chr(10), ' ')}...")
             
             # 5. Invoke LLM Generation
             logger.info(f"Context is relevant. Invoking {settings.active_llm_model} for answer generation...")
             try:
                 prompt_input = self.prompt.format_messages(
                     context=formatted_context,
-                    question=question
+                    question=search_query
                 )
+                logger.info("--- LLM PROMPT SENT TO MODEL ---")
+                for msg in prompt_input:
+                    logger.info(f"Message Role: {msg.type}\nContent:\n{msg.content}\n")
+                logger.info("--------------------------------")
+                
                 response_msg = self.llm.invoke(prompt_input)
                 answer = response_msg.content
+                logger.info(f"--- LLM RAW RESPONSE RECEIVED ---\n{answer}\n---------------------------------")
                 
-                # Retrieve token usage metadata dynamically from Google GenAI response
+                # Retrieve token usage metadata dynamically from response
                 if hasattr(response_msg, "usage_metadata") and response_msg.usage_metadata:
                     input_tokens = response_msg.usage_metadata.get("input_tokens", 0)
                     output_tokens = response_msg.usage_metadata.get("output_tokens", 0)
+                elif hasattr(response_msg, "response_metadata") and "token_usage" in response_msg.response_metadata:
+                    token_usage = response_msg.response_metadata["token_usage"]
+                    if token_usage:
+                        input_tokens = token_usage.get("prompt_tokens", 0)
+                        output_tokens = token_usage.get("completion_tokens", 0)
             except Exception as e:
                 raise GenerationError(f"LLM generation API call failed: {e}") from e
             
@@ -271,11 +344,15 @@ class GenerationPipeline:
         """Compiles exact elapsed times, token counts, and transaction costs."""
         elapsed = time.time() - start_time
         
-        # Pricing metrics for gemini-2.5-flash-lite:
-        # Input tokens: $0.10 / 1M tokens ($0.00000010 / token)
-        # Output tokens: $0.40 / 1M tokens ($0.00000040 / token)
-        input_cost = input_tokens * 0.00000010
-        output_cost = output_tokens * 0.00000040
+        # Pricing metrics based on provider
+        if settings.llm_provider.lower() == "groq":
+            # Llama-3.1-70b-versatile estimates: $0.59 / 1M input, $0.79 / 1M output
+            input_cost = input_tokens * 0.00000059
+            output_cost = output_tokens * 0.00000079
+        else:
+            # gemini-2.5-flash-lite: $0.10 / 1M input, $0.40 / 1M output
+            input_cost = input_tokens * 0.00000010
+            output_cost = output_tokens * 0.00000040
         total_cost = input_cost + output_cost
         
         return {

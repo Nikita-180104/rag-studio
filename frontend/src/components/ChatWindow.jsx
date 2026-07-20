@@ -15,7 +15,7 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline 
     {
       title: "Standard Q&A",
       desc: "Retrieves answers directly from index",
-      text: "What consensus engine does Project Antigravity run on?"
+      text: "What consensus engine does GroundLens AI run on?"
     },
     {
       title: "Unanswerable Q&A",
@@ -25,7 +25,7 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline 
     {
       title: "Multi-chunk Q&A",
       desc: "Synthesizes data across pages 1 and 3",
-      text: "What consensus engine does Project Antigravity use, and how is its cross-node communication secured?"
+      text: "What consensus engine does GroundLens AI use, and how is its cross-node communication secured?"
     }
   ];
 
@@ -57,7 +57,7 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline 
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/10 border border-blue-500/20 mb-6 shadow-[0_0_20px_rgba(31,111,235,0.15)] animate-glow">
               <MessageSquare className="h-6 w-6 text-blue-400 text-glow-blue" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-white mb-2">Project Antigravity RAG Studio</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-white mb-2">GroundLens AI RAG Studio</h2>
             <p className="text-sm text-gray-400 mb-8 max-w-xl leading-relaxed">
               An enterprise-grade hybrid retrieval interface. Consults Chroma persistent vector blocks, applies Cross-Encoder compression, and enforces strict pre- and post-generation grounding guardrails.
             </p>
@@ -91,7 +91,7 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline 
                   <Loader2 className="h-4 w-4 animate-spin text-blue-400 text-glow-blue" />
                 </div>
                 <div className="flex flex-col space-y-2 flex-1">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Antigravity AI Agent</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">GroundLens AI Agent</span>
                   <div className="rounded-xl glass-panel border border-[#21262D]/60 px-5 py-4 text-sm text-gray-400 shadow-md">
                     Evaluating context scores, compressing chunks, and auditing factual grounding...
                   </div>

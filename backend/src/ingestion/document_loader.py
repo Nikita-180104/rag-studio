@@ -20,10 +20,92 @@ class UniversalDocumentLoader:
     Ensures standard metadata (like source file path) is attached to every document.
     """
     
+class OcrPdfLoader:
+    """
+    A PDF loader that renders each page as an image using PyMuPDF (fitz)
+    and runs RapidOCR to extract all text (including text inside diagrams/images).
+    """
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+
+    def load(self) -> List[Document]:
+        import fitz  # PyMuPDF
+        from rapidocr_onnxruntime import RapidOCR
+        
+        logger.info(f"Running ONNX-driven OCR on PDF: {self.file_path}...")
+        
+        engine = RapidOCR()
+        documents = []
+        
+        # Open PDF
+        doc = fitz.open(self.file_path)
+        
+        for page_idx in range(len(doc)):
+            logger.info(f"Processing page {page_idx + 1}/{len(doc)} via OCR...")
+            page = doc[page_idx]
+            
+            # Render page to a high-resolution image (2x zoom = ~150 DPI)
+            zoom = 2
+            mat = fitz.Matrix(zoom, zoom)
+            pix = page.get_pixmap(matrix=mat)
+            
+            # Convert pixmap to PNG bytes
+            img_bytes = pix.tobytes("png")
+            
+            # Run OCR
+            ocr_result, _ = engine(img_bytes)
+            
+            page_text = ""
+            if ocr_result:
+                formatted_lines = []
+                for line in ocr_result:
+                    box, text, conf = line
+                    if not text or not text.strip():
+                        continue
+                    
+                    # Calculate bounding box height (proxy for font size)
+                    # Coordinates format: [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+                    y1 = box[0][1]
+                    y2 = box[1][1]
+                    y3 = box[2][1]
+                    y4 = box[3][1]
+                    height = int(((y4 - y1) + (y3 - y2)) / 2)
+                    
+                    # Apply semantic hierarchy based on box height threshold
+                    if height >= 35:
+                        formatted_lines.append(f"# {text.strip()}")
+                    elif height >= 22:
+                        formatted_lines.append(f"## {text.strip()}")
+                    else:
+                        formatted_lines.append(f"- [Illustration Detail]: {text.strip()}")
+                page_text = "\n".join(formatted_lines)
+            
+            # Fallback to standard digital text if OCR is empty
+            if not page_text.strip():
+                logger.info(f"OCR returned empty text for page {page_idx + 1}. Falling back to digital text.")
+                page_text = page.get_text()
+                
+            metadata = {
+                "source": self.file_path,
+                "page": page_idx
+            }
+            
+            documents.append(Document(page_content=page_text, metadata=metadata))
+            
+        doc.close()
+        logger.info(f"OCR load complete for {self.file_path}. Extracted {len(documents)} pages.")
+        return documents
+
+class UniversalDocumentLoader:
+    """
+    A unified interface to load various document types into LangChain Document objects.
+    Ensures standard metadata (like source file path) is attached to every document.
+    """
+    
     def __init__(self):
         # Map file extensions to their corresponding LangChain loaders
         self.loaders = {
-            ".pdf": PyPDFLoader,
+            ".pdf": OcrPdfLoader,
             ".txt": TextLoader,
             ".md": TextLoader,
             ".docx": UnstructuredWordDocumentLoader,

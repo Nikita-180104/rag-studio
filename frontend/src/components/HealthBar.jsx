@@ -16,7 +16,7 @@ export default function HealthBar({ health, isOnline, onClearCache }) {
         </div>
         <div className="flex flex-col">
           <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Workspace Monitor</span>
-          <h1 className="text-md font-bold tracking-tight text-white -mt-0.5">Project Antigravity RAG Studio</h1>
+          <h1 className="text-md font-bold tracking-tight text-white -mt-0.5">GroundLens AI RAG Studio</h1>
         </div>
       </div>
 

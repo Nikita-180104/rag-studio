@@ -46,7 +46,7 @@ def run_test():
     pipeline = GenerationPipeline(vector_store_manager)
     
     # 6. Ask Question
-    query = "What consensus engine does Project Antigravity use, and what is its peak throughput capacity?"
+    query = "What consensus engine does GroundLens AI use, and what is its peak throughput capacity?"
     logger.info(f"Executing Query: '{query}'")
     
     result = pipeline.answer_question(query)

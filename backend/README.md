@@ -9,7 +9,7 @@ app_port: 7860
 
 # RAG Backend API Space
 
-This Hugging Face Space hosts the high-performance production backend API for the **Project Antigravity RAG Studio**. 
+This Hugging Face Space hosts the high-performance production backend API for the **GroundLens AI RAG Studio**. 
 
 It runs inside a Docker container serving a FastAPI web app with local semantic indexing, Cross-Encoder re-ranking, and double-layer factual grounding guardrails.
 

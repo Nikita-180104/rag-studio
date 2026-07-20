@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from langchain_core.documents import Document
 from config import settings
 from embedding.embedder import BGEEmbedder
-from utils.errors import RetrievalError
+from utils.errors import RetrievalError, RAGException
 
 logger = logging.getLogger(__name__)
 
@@ -107,8 +107,12 @@ class ChromaManager:
                 logger.warning("No documents matching metadata filters. Falling back to pure dense retrieval.")
                 return self.vector_store.as_retriever(search_kwargs=dense_search_kwargs)
                 
-            # 1. Instantiate local BM25 sparse keyword retriever
-            bm25_retriever = BM25Retriever.from_documents(documents)
+            # 1. Instantiate local BM25 sparse keyword retriever with punctuation-aware tokenization
+            import re
+            bm25_retriever = BM25Retriever.from_documents(
+                documents, 
+                preprocess_func=lambda text: re.findall(r'\w+(?:\.\w+)*', text.lower())
+            )
             bm25_retriever.k = k
             
             # 2. Instantiate dense vector retriever
@@ -130,6 +134,52 @@ class ChromaManager:
             logger.error(f"Failed to build hybrid ensemble retriever: {e}. Falling back to pure dense.")
             return self.vector_store.as_retriever(search_kwargs=dense_search_kwargs)
         
+    def is_empty(self) -> bool:
+        try:
+            return self.vector_store._collection.count() == 0
+        except Exception as e:
+            logger.warning(f"Error checking if Chroma is empty: {e}")
+            return True
+
+    def delete_document(self, filepath: str):
+        """
+        Deletes all chunks associated with a document (identified by filepath) from:
+        1. Chroma dense vector store
+        2. Local documents.pkl file (BM25 index)
+        """
+        try:
+            logger.info(f"Deleting document chunks for source: {filepath} from Chroma...")
+            norm_filepath = os.path.abspath(filepath)
+            
+            # Query for the IDs matching the source filepath
+            results = self.vector_store.get(where={"source": norm_filepath})
+            ids = results.get("ids", [])
+            if ids:
+                logger.info(f"Found {len(ids)} chunks in Chroma to delete.")
+                self.vector_store.delete(ids=ids)
+                logger.info("Deleted chunks from Chroma DB.")
+            else:
+                logger.warning(f"No chunks found in Chroma for source: {norm_filepath}")
+                
+            # Now delete from local documents.pkl
+            pkl_path = os.path.join(settings.chroma_db_dir, "documents.pkl")
+            if os.path.exists(pkl_path):
+                import pickle
+                with open(pkl_path, 'rb') as f:
+                    documents = pickle.load(f)
+                
+                # Filter out documents matching the source path
+                filtered_docs = [doc for doc in documents if os.path.abspath(doc.metadata.get("source", "")) != norm_filepath]
+                
+                if len(filtered_docs) < len(documents):
+                    logger.info(f"Filtered out {len(documents) - len(filtered_docs)} chunks from BM25 storage.")
+                    with open(pkl_path, 'wb') as f:
+                        pickle.dump(filtered_docs, f)
+                else:
+                    logger.info("No matching chunks found in BM25 storage.")
+        except Exception as e:
+            raise RetrievalError(f"Failed to delete document from Chroma DB: {e}") from e
+
     def close(self):
         pass
 
@@ -207,6 +257,12 @@ class WeaviateManager:
             search_kwargs=search_kwargs
         )
         
+    def is_empty(self) -> bool:
+        return False
+
+    def delete_document(self, filepath: str):
+        pass
+
     def close(self):
         try:
             if hasattr(self, "client"):
@@ -246,6 +302,15 @@ class VectorStoreManager:
             return self.manager.get_retriever(k=k, search_filter=search_filter)
         except Exception as e:
             raise RetrievalError(f"Failed to generate retriever for {self.provider}: {e}") from e
+
+    def is_empty(self) -> bool:
+        if hasattr(self.manager, "is_empty"):
+            return self.manager.is_empty()
+        return True
+
+    def delete_document(self, filepath: str):
+        if hasattr(self.manager, "delete_document"):
+            self.manager.delete_document(filepath)
 
     def close(self):
         self.manager.close()

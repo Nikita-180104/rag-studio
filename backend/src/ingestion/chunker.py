@@ -55,6 +55,14 @@ class DocumentChunker:
         # (like 'source' and 'page') from the parent doc into all its child chunks.
         chunks = self.text_splitter.split_documents(documents)
         
+        # Prepend document name prefix to enable keyword-based matching for specific files
+        import os
+        for chunk in chunks:
+            source = chunk.metadata.get("source", "")
+            if source:
+                filename = os.path.basename(source)
+                chunk.page_content = f"Document Source filename: {filename}\n{chunk.page_content}"
+        
         logger.info(f"Successfully generated {len(chunks)} chunks.")
         return chunks
 
