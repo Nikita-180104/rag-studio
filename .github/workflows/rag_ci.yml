@@ -9,9 +9,6 @@ on:
 jobs:
   rag-evaluation:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
     - name: Checkout repository
@@ -26,11 +23,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r backend/requirements.txt
 
     - name: Ingest Knowledge Base
       run: |
-        python -c "import sys, os; sys.path.append('src'); from retrieval.vector_store import VectorStoreManager; from ingestion.document_loader import UniversalDocumentLoader; from ingestion.chunker import DocumentChunker; db = VectorStoreManager(); loader = UniversalDocumentLoader(); docs = loader.load_document('data/sample_doc.md'); chunked = DocumentChunker(chunk_size=500, chunk_overlap=100).chunk_documents(docs); db.add_documents(chunked); db.close()"
+        python -c "import sys, os; sys.path.append('backend/src'); from retrieval.vector_store import VectorStoreManager; from ingestion.document_loader import UniversalDocumentLoader; from ingestion.chunker import DocumentChunker; db = VectorStoreManager(); loader = UniversalDocumentLoader(); docs = loader.load_document('backend/data/sample_doc.md'); chunked = DocumentChunker(chunk_size=500, chunk_overlap=100).chunk_documents(docs); db.add_documents(chunked); db.close()"
 
     - name: Run Ragas Offline Evaluation
       env:
@@ -39,8 +36,8 @@ jobs:
         USE_TF: "0"
         VECTOR_DB_PROVIDER: "chroma"
       run: |
-        python scripts/evaluate_rag.py
+        cd backend && python scripts/evaluate_rag.py
 
     - name: Run CI Quality Gate
       run: |
-        python scripts/ci_quality_gate.py
+        cd backend && python scripts/ci_quality_gate.py
