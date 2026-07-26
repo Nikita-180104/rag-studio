@@ -1,9 +1,10 @@
 import os
+import re
 import logging
 from typing import List, Dict, Any
 
 from langchain_core.documents import Document
-from config import settings
+from src.config import settings
 from embedding.embedder import BGEEmbedder
 from utils.errors import RetrievalError, RAGException
 
@@ -34,8 +35,45 @@ class ChromaManager:
                 embedding_function=self.embedder.get_embeddings()
             )
             logger.info("Chroma DB initialization complete.")
+            self.bm25_retriever = None
+            self.bm25_docs = []
+            self._build_bm25_retriever()
         except Exception as e:
             raise RetrievalError(f"Failed to initialize Chroma DB connection: {e}") from e
+
+    def _build_bm25_retriever(self):
+        """Loads documents from pickle and builds the cached BM25 index."""
+        import pickle
+        from langchain_community.retrievers import BM25Retriever
+        
+        pkl_path = os.path.join(settings.chroma_db_dir, "documents.pkl")
+        if not os.path.exists(pkl_path):
+            logger.warning(f"BM25 build: documents.pkl does not exist at path: {pkl_path}")
+            self.bm25_retriever = None
+            self.bm25_docs = []
+            return
+            
+        try:
+            logger.info("Building/rebuilding BM25 retriever cache from local storage...")
+            with open(pkl_path, 'rb') as f:
+                documents = pickle.load(f)
+            
+            if not documents:
+                self.bm25_retriever = None
+                self.bm25_docs = []
+                logger.warning("BM25 build: No documents found in documents.pkl.")
+                return
+                
+            self.bm25_docs = documents
+            self.bm25_retriever = BM25Retriever.from_documents(
+                documents, 
+                preprocess_func=lambda text: re.findall(r'\w+(?:\.\w+)*', text.lower())
+            )
+            logger.info(f"BM25 retriever successfully cached with {len(documents)} chunks.")
+        except Exception as e:
+            logger.error(f"Error building BM25 retriever: {e}")
+            self.bm25_retriever = None
+            self.bm25_docs = []
 
     def add_documents(self, documents: List[Document]):
         if not documents:
@@ -60,6 +98,9 @@ class ChromaManager:
             with open(pkl_path, 'wb') as f:
                 pickle.dump(all_docs, f)
             logger.info(f"Successfully persisted document metadata for local BM25 indexing at: {pkl_path}")
+            
+            # Rebuild cached BM25 retriever
+            self._build_bm25_retriever()
         except Exception as e:
             raise RetrievalError(f"Failed to index documents in Chroma DB: {e}") from e
 
@@ -68,9 +109,8 @@ class ChromaManager:
         Builds a dynamic Sparse-Dense hybrid ensemble using local BM25 + dense Chroma vector DB,
         supporting metadata pre-filtering across both channels.
         """
-        import pickle
-        from langchain_community.retrievers import BM25Retriever
         from langchain_classic.retrievers.ensemble import EnsembleRetriever
+        from langchain_community.retrievers import BM25Retriever
         
         pkl_path = os.path.join(settings.chroma_db_dir, "documents.pkl")
         
@@ -86,11 +126,20 @@ class ChromaManager:
             return self.vector_store.as_retriever(search_kwargs=dense_search_kwargs)
             
         try:
-            with open(pkl_path, 'rb') as f:
-                documents = pickle.load(f)
-            
-            # Apply metadata pre-filtering to local documents list for BM25
-            if search_filter:
+            if not search_filter:
+                if self.bm25_retriever is None:
+                    self._build_bm25_retriever()
+                
+                bm25_retriever = self.bm25_retriever
+                if bm25_retriever is None:
+                    logger.warning("BM25 retriever is empty. Falling back to pure dense.")
+                    return self.vector_store.as_retriever(search_kwargs=dense_search_kwargs)
+                bm25_retriever.k = k
+            else:
+                if not self.bm25_docs:
+                    self._build_bm25_retriever()
+                documents = self.bm25_docs
+                
                 filtered_docs = []
                 for doc in documents:
                     match = True
@@ -100,20 +149,16 @@ class ChromaManager:
                             break
                     if match:
                         filtered_docs.append(doc)
-                documents = filtered_docs
-                logger.info(f"Applying metadata filter to local BM25: Retained {len(documents)} matching chunks.")
-            
-            if not documents:
-                logger.warning("No documents matching metadata filters. Falling back to pure dense retrieval.")
-                return self.vector_store.as_retriever(search_kwargs=dense_search_kwargs)
                 
-            # 1. Instantiate local BM25 sparse keyword retriever with punctuation-aware tokenization
-            import re
-            bm25_retriever = BM25Retriever.from_documents(
-                documents, 
-                preprocess_func=lambda text: re.findall(r'\w+(?:\.\w+)*', text.lower())
-            )
-            bm25_retriever.k = k
+                if not filtered_docs:
+                    logger.warning("No documents matching metadata filters. Falling back to pure dense retrieval.")
+                    return self.vector_store.as_retriever(search_kwargs=dense_search_kwargs)
+                
+                bm25_retriever = BM25Retriever.from_documents(
+                    filtered_docs, 
+                    preprocess_func=lambda text: re.findall(r'\w+(?:\.\w+)*', text.lower())
+                )
+                bm25_retriever.k = k
             
             # 2. Instantiate dense vector retriever
             dense_retriever = self.vector_store.as_retriever(search_kwargs=dense_search_kwargs)
@@ -143,24 +188,31 @@ class ChromaManager:
 
     def delete_document(self, filepath: str):
         """
-        Deletes all chunks associated with a document (identified by filepath) from:
+        Deletes all chunks associated with a document (identified by filepath or clean filename) from:
         1. Chroma dense vector store
         2. Local documents.pkl file (BM25 index)
         """
         try:
-            logger.info(f"Deleting document chunks for source: {filepath} from Chroma...")
+            filename = os.path.basename(filepath)
+            clean_filename = re.sub(r'^\d+_', '', filename)
             norm_filepath = os.path.abspath(filepath)
             
-            # Query for the IDs matching the source filepath
-            results = self.vector_store.get(where={"source": norm_filepath})
-            ids = results.get("ids", [])
-            if ids:
-                logger.info(f"Found {len(ids)} chunks in Chroma to delete.")
-                self.vector_store.delete(ids=ids)
-                logger.info("Deleted chunks from Chroma DB.")
-            else:
-                logger.warning(f"No chunks found in Chroma for source: {norm_filepath}")
+            logger.info(f"Deleting document chunks for source clean: '{clean_filename}' or full: '{norm_filepath}' from Chroma...")
+            
+            # 1. Delete by clean filename
+            results_clean = self.vector_store.get(where={"source": clean_filename})
+            ids_clean = results_clean.get("ids", [])
+            if ids_clean:
+                logger.info(f"Found {len(ids_clean)} chunks in Chroma to delete by clean filename.")
+                self.vector_store.delete(ids=ids_clean)
                 
+            # 2. Delete by norm_filepath
+            results_norm = self.vector_store.get(where={"source": norm_filepath})
+            ids_norm = results_norm.get("ids", [])
+            if ids_norm:
+                logger.info(f"Found {len(ids_norm)} chunks in Chroma to delete by normalized filepath.")
+                self.vector_store.delete(ids=ids_norm)
+
             # Now delete from local documents.pkl
             pkl_path = os.path.join(settings.chroma_db_dir, "documents.pkl")
             if os.path.exists(pkl_path):
@@ -168,8 +220,18 @@ class ChromaManager:
                 with open(pkl_path, 'rb') as f:
                     documents = pickle.load(f)
                 
-                # Filter out documents matching the source path
-                filtered_docs = [doc for doc in documents if os.path.abspath(doc.metadata.get("source", "")) != norm_filepath]
+                filtered_docs = []
+                for doc in documents:
+                    doc_src = doc.metadata.get("source", "")
+                    doc_fn = doc.metadata.get("filename", "")
+                    if doc_src == clean_filename or doc_fn == clean_filename:
+                        continue
+                    try:
+                        if os.path.abspath(doc_src) == norm_filepath:
+                            continue
+                    except Exception:
+                        pass
+                    filtered_docs.append(doc)
                 
                 if len(filtered_docs) < len(documents):
                     logger.info(f"Filtered out {len(documents) - len(filtered_docs)} chunks from BM25 storage.")
@@ -177,6 +239,9 @@ class ChromaManager:
                         pickle.dump(filtered_docs, f)
                 else:
                     logger.info("No matching chunks found in BM25 storage.")
+            
+            # Rebuild cached BM25 retriever
+            self._build_bm25_retriever()
         except Exception as e:
             raise RetrievalError(f"Failed to delete document from Chroma DB: {e}") from e
 

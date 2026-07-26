@@ -11,7 +11,7 @@ import pandas as pd
 # Ensure src is in the python path
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "src"))
 
-from config import settings
+from src.config import settings
 from retrieval.vector_store import VectorStoreManager
 from generation.pipeline import GenerationPipeline
 

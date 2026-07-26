@@ -7,7 +7,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-from config import settings
+from src.config import settings
 
 class SQLiteRAGCache:
     """

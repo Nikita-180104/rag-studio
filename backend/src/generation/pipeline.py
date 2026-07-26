@@ -1,4 +1,5 @@
 import time
+import re
 import logging
 from typing import List, Dict, Any
 
@@ -6,7 +7,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 
-from config import settings
+from src.config import settings
 from retrieval.vector_store import VectorStoreManager
 from utils.errors import RAGException, RetrievalError, GenerationError
 
@@ -110,6 +111,7 @@ class GenerationPipeline:
             source = doc.metadata.get('source', 'Unknown Source')
             # Extract filename from the path for cleaner citations
             filename = source.split('\\')[-1].split('/')[-1]
+            filename = re.sub(r'^\d+_', '', filename)
             page = doc.metadata.get('page', 'N/A')
             if isinstance(page, int):
                 page = page + 1
@@ -195,6 +197,7 @@ class GenerationPipeline:
                 for idx, doc in enumerate(docs):
                     source = doc.metadata.get('source', 'Unknown')
                     filename = source.split('\\')[-1].split('/')[-1]
+                    filename = re.sub(r'^\d+_', '', filename)
                     page = doc.metadata.get('page', -1)
                     if isinstance(page, int):
                         page = page + 1
@@ -208,6 +211,7 @@ class GenerationPipeline:
             for doc in docs:
                 source = doc.metadata.get('source', 'Unknown Source')
                 filename = source.split('\\')[-1].split('/')[-1]
+                filename = re.sub(r'^\d+_', '', filename)
                 page = doc.metadata.get('page', 'N/A')
                 if isinstance(page, int):
                     page = page + 1
@@ -304,11 +308,11 @@ class GenerationPipeline:
                 "telemetry": telemetry
             }
             
-        except RAGException as re:
-            logger.error(f"RAG Pipeline Boundary caught custom error: {re}")
-            err_msg = str(re)
+        except RAGException as exc:
+            logger.error(f"RAG Pipeline Boundary caught custom error: {exc}")
+            err_msg = str(exc)
             if "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower() or "429" in err_msg:
-                raise GenerationError(f"Gemini API rate limit or quota exceeded: {err_msg}") from re
+                raise GenerationError(f"Gemini API rate limit or quota exceeded: {err_msg}") from exc
             else:
                 answer = f"An internal system error occurred: {err_msg}"
             return {

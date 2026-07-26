@@ -6,28 +6,53 @@ import MessageBubble from './MessageBubble';
  * Chat window containing the scrollable message log, empty-state helpers,
  * active loading status indicator, and prompt text inputs.
  */
-export default function ChatWindow({ messages, loading, onSendMessage, isOnline }) {
+export default function ChatWindow({ messages, loading, onSendMessage, isOnline, documents = [], onOpenKb }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
 
-  // Examples covering standard, unanswerable, and multi-chunk RAG criteria
-  const exampleQuestions = [
-    {
-      title: "Standard Q&A",
-      desc: "Retrieves answers directly from index",
-      text: "What consensus engine does GroundLens AI run on?"
-    },
-    {
-      title: "Unanswerable Q&A",
-      desc: "Triggers pre-gen short-circuit gate",
-      text: "What is the capital city of France?"
-    },
-    {
-      title: "Multi-chunk Q&A",
-      desc: "Synthesizes data across pages 1 and 3",
-      text: "What consensus engine does GroundLens AI use, and how is its cross-node communication secured?"
+  // Simple templates based on indexed filenames
+  const getExampleQuestions = () => {
+    if (!documents || documents.length === 0) {
+      return [
+        {
+          title: "Standard Q&A",
+          desc: "Retrieves answers directly from index",
+          text: "What consensus engine does GroundLens AI run on?"
+        },
+        {
+          title: "Unanswerable Q&A",
+          desc: "Triggers pre-gen short-circuit gate",
+          text: "What is the capital city of France?"
+        },
+        {
+          title: "Multi-chunk Q&A",
+          desc: "Synthesizes data across pages 1 and 3",
+          text: "What consensus engine does GroundLens AI use, and how is its cross-node communication secured?"
+        }
+      ];
     }
-  ];
+
+    const filename = documents[0].filename;
+    return [
+      {
+        title: "Coverage",
+        desc: `Understand what ${filename} contains`,
+        text: `What does ${filename} cover?`
+      },
+      {
+        title: "Summarization",
+        desc: "Extract key bullet points",
+        text: `Summarize the key points in ${filename}`
+      },
+      {
+        title: "Main Topic",
+        desc: "Understand the core focus",
+        text: `What is the main topic of ${filename}?`
+      }
+    ];
+  };
+
+  const exampleQuestions = getExampleQuestions();
 
   const handleSend = () => {
     if (!input.trim() || loading || !isOnline) return;
@@ -54,8 +79,8 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline 
         {messages.length === 0 ? (
           /* Empty/Initial State Display */
           <div className="flex h-full flex-col items-center justify-center text-center max-w-4xl mx-auto py-12">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/10 border border-blue-500/20 mb-6 shadow-[0_0_20px_rgba(31,111,235,0.15)] animate-glow">
-              <MessageSquare className="h-6 w-6 text-blue-400 text-glow-blue" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600/10 border border-violet-500/20 mb-6 shadow-[0_0_20px_rgba(139,92,246,0.15)] animate-glow">
+              <MessageSquare className="h-6 w-6 text-violet-400 text-glow-violet" />
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-white mb-2">GroundLens AI RAG Studio</h2>
             <p className="text-sm text-gray-400 mb-8 max-w-xl leading-relaxed">
@@ -65,14 +90,14 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
               {exampleQuestions.map((q, idx) => (
                 <button
-                  key={idx}
-                  onClick={() => setInput(q.text)}
-                  disabled={!isOnline}
-                  className="flex flex-col text-left p-5 rounded-xl glass-card text-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xl active:scale-98"
+                   key={idx}
+                   onClick={() => setInput(q.text)}
+                   disabled={!isOnline}
+                   className="flex flex-col text-left p-5 rounded-xl glass-card text-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xl active:scale-98"
                 >
-                  <span className="font-bold text-white mb-1.5 text-[10px] tracking-widest uppercase text-glow-blue">{q.title}</span>
+                  <span className="font-bold text-white mb-1.5 text-[10px] tracking-widest uppercase text-glow-violet">{q.title}</span>
                   <span className="text-xs text-gray-500 mb-4 font-semibold">{q.desc}</span>
-                  <span className="text-xs font-mono text-blue-400 border-t border-darkBorder/40 pt-3 truncate w-full">{q.text}</span>
+                  <span className="text-xs font-mono text-violet-400 border-t border-darkBorder/40 pt-3 truncate w-full">{q.text}</span>
                 </button>
               ))}
             </div>
@@ -87,8 +112,8 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline 
             {/* Custom loader state card */}
             {loading && (
               <div className="flex items-start space-x-4 animate-pulse">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600/10 border border-blue-500/20 shadow-lg">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400 text-glow-blue" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600/10 border border-violet-500/20 shadow-lg">
+                  <Loader2 className="h-4 w-4 animate-spin text-violet-400 text-glow-violet" />
                 </div>
                 <div className="flex flex-col space-y-2 flex-1">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">GroundLens AI Agent</span>
@@ -117,16 +142,25 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline 
                 ? "FastAPI server unreachable. Re-connecting to localhost:8000..." 
                 : "Ask a question about the systems architecture... (Press Enter to Send)"
             }
-            rows={1}
-            className="flex-1 resize-none rounded-xl bg-darkBg/60 border border-darkBorder/50 focus:border-blue-500/50 focus:outline-none px-4 py-3.5 text-sm text-white placeholder-gray-500 transition-all duration-200 focus:shadow-[0_0_15px_rgba(31,111,235,0.15)] shadow-inner"
+            rows={2}
+            className="flex-1 resize-none h-16 rounded-xl bg-darkBg/60 border border-darkBorder/50 focus:border-violet-500/50 focus:outline-none px-4 py-3 text-sm text-white placeholder-gray-500 transition-all duration-200 focus:shadow-[0_0_20px_rgba(139,92,246,0.25)] focus:ring-1 focus:ring-violet-500/30 shadow-inner"
           />
+          {onOpenKb && (
+            <button
+              onClick={onOpenKb}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#181C24]/60 hover:bg-[#181C24] border border-darkBorder hover:border-gray-500/50 text-gray-400 hover:text-white transition-all duration-200 cursor-pointer active:scale-90 shadow-lg"
+              title="Open Knowledge Base Drawer"
+            >
+              <span className="text-md">📁</span>
+            </button>
+          )}
           <button
             onClick={handleSend}
             disabled={!input.trim() || loading || !isOnline}
-            className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 border ${
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-all duration-200 border ${
               !input.trim() || loading || !isOnline
                 ? 'bg-[#181C24]/60 text-gray-600 border-darkBorder/40 cursor-not-allowed'
-                : 'bg-blue-600 text-white border-blue-500 hover:bg-blue-500 shadow-[0_4px_12px_rgba(31,111,235,0.2)] hover:shadow-[0_4px_18px_rgba(31,111,235,0.35)] hover:-translate-y-0.5 active:translate-y-0 active:scale-90 cursor-pointer'
+                : 'bg-violet-600 text-white border-violet-500 hover:bg-violet-500 shadow-[0_4px_12px_rgba(139,92,246,0.2)] hover:shadow-[0_4px_18px_rgba(139,92,246,0.35)] hover:-translate-y-0.5 active:translate-y-0 active:scale-90 cursor-pointer'
             }`}
           >
             <Send className="h-4 w-4" />

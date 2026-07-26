@@ -4,7 +4,7 @@ import json
 def run():
     # Programmatically clear the SQLite cache to bypass the stale cached response
     import sys
-    sys.path.append("src")
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
     from utils.cache import SQLiteRAGCache
     SQLiteRAGCache().clear()
     print("Persistent query cache successfully cleared.")

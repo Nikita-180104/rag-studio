@@ -12,8 +12,7 @@ import {
  * Allows file uploads via browse or drag-and-drop, displays
  * progress metrics, and lists indexed documents with controls.
  */
-export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
-  const [documents, setDocuments] = useState([]);
+export default function KbPanel({ isOpen, onClose, isOnline, showToast, documents = [], onRefreshDocs }) {
   const [loadingList, setLoadingList] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -22,21 +21,16 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    if (isOpen && isOnline) {
-      fetchDocs();
-    }
-  }, [isOpen, isOnline]);
-
   const fetchDocs = async () => {
-    setLoadingList(true);
-    try {
-      const data = await listDocuments();
-      setDocuments(data);
-    } catch (err) {
-      showToast('Failed to fetch document list.', 'error');
-    } finally {
-      setLoadingList(false);
+    if (onRefreshDocs) {
+      setLoadingList(true);
+      try {
+        await onRefreshDocs();
+      } catch (err) {
+        showToast('Failed to fetch document list.', 'error');
+      } finally {
+        setLoadingList(false);
+      }
     }
   };
 
@@ -129,20 +123,22 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
 
   const getFileIcon = (filename) => {
     const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+    if (ext === '.pdf') return <FileText className="h-4.5 w-4.5 text-rose-500 text-glow-rose" />;
     if (ext === '.md') return <FileCode className="h-4.5 w-4.5 text-purple-400 text-glow-purple" />;
-    if (ext === '.txt') return <FileText className="h-4.5 w-4.5 text-blue-400 text-glow-blue" />;
+    if (ext === '.txt') return <FileText className="h-4.5 w-4.5 text-violet-400 text-glow-violet" />;
+    if (ext === '.docx') return <File className="h-4.5 w-4.5 text-violet-500 text-glow-violet" />;
     return <File className="h-4.5 w-4.5 text-gray-400" />;
   };
 
-  if (!isOpen) return null;
-
   return (
-    <aside className="w-80 border-r border-darkBorder/50 glass-panel flex flex-col h-full overflow-y-auto shrink-0 shadow-[0_0_35px_rgba(0,0,0,0.3)] animate-slideRight backdrop-blur-xl">
+    <aside className={`absolute left-0 top-0 h-full w-80 border-r border-darkBorder/50 glass-panel flex flex-col overflow-y-auto shrink-0 shadow-[0_0_35px_rgba(0,0,0,0.5)] z-50 backdrop-blur-xl transition-all duration-300 transform ${
+      isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 pointer-events-none'
+    }`}>
       {/* KB Sidebar Header */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-darkBorder/50 bg-darkBg/30">
         <div className="flex items-center space-x-2.5 text-white">
-          <Database className="h-4.5 w-4.5 text-blue-400 text-glow-blue animate-glow" />
-          <h2 className="font-bold tracking-widest text-xs uppercase">Knowledge Base</h2>
+          <Database className="h-4.5 w-4.5 text-violet-400 text-glow-violet animate-glow" />
+          <h2 className="font-bold tracking-widest text-xs uppercase">Knowledge Base ({documents.length})</h2>
         </div>
         <div className="flex items-center space-x-3">
           <button
@@ -151,7 +147,7 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
             className="text-gray-400 hover:text-white cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
             title="Refresh documents"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loadingList ? 'animate-spin text-blue-400' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loadingList ? 'animate-spin text-violet-400' : ''}`} />
           </button>
           <button
             onClick={onClose}
@@ -172,8 +168,8 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
           onClick={() => isOnline && !isUploading && fileInputRef.current.click()}
           className={`border border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center space-y-2.5 ${
             isDragOver 
-              ? 'border-blue-500 bg-blue-600/10 shadow-[0_0_15px_rgba(31,111,235,0.2)]' 
-              : 'border-darkBorder hover:border-blue-500/50 hover:bg-darkBg/30'
+              ? 'border-violet-500 bg-violet-600/10 shadow-[0_0_15px_rgba(139,92,246,0.2)]' 
+              : 'border-darkBorder hover:border-violet-500/50 hover:bg-darkBg/30'
           } ${(!isOnline || isUploading) ? 'opacity-40 cursor-not-allowed' : ''}`}
         >
           <input 
@@ -184,7 +180,7 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
             accept=".pdf,.docx,.txt,.md"
             disabled={!isOnline || isUploading}
           />
-          <UploadCloud className={`h-8 w-8 ${isDragOver ? 'text-blue-400 animate-bounce' : 'text-gray-500'}`} />
+          <UploadCloud className={`h-8 w-8 ${isDragOver ? 'text-violet-400 animate-bounce' : 'text-gray-500'}`} />
           <div className="text-xs font-semibold text-white">
             {isDragOver ? 'Drop file here' : 'Drag & drop file or browse'}
           </div>
@@ -200,20 +196,23 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
               <span className="font-semibold text-gray-400 truncate max-w-[180px]">
                 {uploadingFilename}
               </span>
-              <span className="font-mono text-blue-400 font-bold">{uploadProgress}%</span>
+              <span className="font-mono text-violet-400 font-bold">{uploadProgress}%</span>
             </div>
             <div className="w-full bg-[#181C24] rounded-full h-1.5 overflow-hidden border border-darkBorder/20">
               <div 
-                className="bg-blue-500 h-full transition-all duration-150 rounded-full" 
+                className="bg-violet-500 h-full transition-all duration-150 rounded-full" 
                 style={{ width: `${uploadProgress}%` }}
               ></div>
             </div>
             <div className="flex items-center space-x-2 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" />
               <span>Indexing document...</span>
             </div>
           </div>
         )}
+
+        {/* Subtle Divider */}
+        <div className="border-t border-darkBorder/40 my-1" />
 
         {/* Document List */}
         <div className="flex-1 flex flex-col min-h-0 space-y-3">
@@ -223,10 +222,10 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
 
           <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-0">
             {documents.length === 0 ? (
-              <div className="h-32 flex flex-col items-center justify-center text-center text-gray-500">
-                <HelpCircle className="h-8 w-8 text-gray-600 mb-2" />
-                <p className="text-xs leading-relaxed max-w-[200px]">
-                  No documents indexed yet. Upload a file to populate the Knowledge Base.
+              <div className="flex flex-col items-center justify-center py-10 text-center text-gray-500 animate-pulse">
+                <span className="text-xl mb-1 text-violet-400 font-bold">↑</span>
+                <p className="text-xs font-semibold max-w-[180px] text-gray-400">
+                  Upload a document to get started
                 </p>
               </div>
             ) : (
@@ -240,7 +239,7 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
                     {/* Background loader during processing */}
                     {isProcessing && (
                       <div className="absolute inset-0 bg-darkBg/80 backdrop-blur-xs flex items-center justify-center space-x-2 z-10">
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                        <Loader2 className="h-4 w-4 animate-spin text-violet-400" />
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                           {processingDoc.type === 'delete' ? 'Deleting...' : 'Re-indexing...'}
                         </span>
@@ -276,12 +275,12 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
                         </span>
                       </div>
 
-                      {/* Action buttons shown on hover */}
-                      <div className="flex items-center space-x-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      {/* Action buttons (always visible and colored) */}
+                      <div className="flex items-center space-x-2 shrink-0">
                         <button
                           onClick={() => handleReindex(doc.filename)}
                           disabled={!isOnline || isProcessing}
-                          className="text-gray-400 hover:text-blue-400 cursor-pointer disabled:opacity-30 transition-colors duration-150 focus:outline-none"
+                          className="p-1 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 hover:border-violet-500/30 transition-all cursor-pointer focus:outline-none disabled:opacity-30"
                           title="Re-index document"
                         >
                           <RotateCw className="h-3.5 w-3.5" />
@@ -289,7 +288,7 @@ export default function KbPanel({ isOpen, onClose, isOnline, showToast }) {
                         <button
                           onClick={() => handleDelete(doc.filename)}
                           disabled={!isOnline || isProcessing}
-                          className="text-gray-400 hover:text-rose-400 cursor-pointer disabled:opacity-30 transition-colors duration-150 focus:outline-none"
+                          className="p-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 hover:border-rose-500/30 transition-all cursor-pointer focus:outline-none disabled:opacity-30"
                           title="Delete document"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

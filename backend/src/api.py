@@ -18,7 +18,7 @@ import shutil
 # Ensure src is in the python path
 sys.path.append(os.path.dirname(__file__))
 
-from config import settings
+from src.config import settings
 from retrieval.vector_store import VectorStoreManager
 from generation.pipeline import GenerationPipeline
 from utils.cache import SQLiteRAGCache
@@ -290,17 +290,24 @@ def bootstrap_data(vector_store_manager: VectorStoreManager):
             
         chunked_docs = chunker.chunk_documents(raw_docs)
         if chunked_docs:
-            vector_store_manager.add_documents(chunked_docs)
-            logger.info(f"Indexed {len(chunked_docs)} chunks from bootstrap.")
-            
-            # Register in metadata store
+            # Register in metadata store using original paths first
             from collections import defaultdict
             chunks_by_file = defaultdict(list)
             for doc in chunked_docs:
                 src = doc.metadata.get("source")
                 if src:
                     chunks_by_file[src].append(doc)
+            
+            # Clean metadata source and filename to original clean filename
+            for doc in chunked_docs:
+                src = doc.metadata.get("source")
+                if src:
+                    doc.metadata["source"] = os.path.basename(src)
+                    doc.metadata["filename"] = os.path.basename(src)
                     
+            vector_store_manager.add_documents(chunked_docs)
+            logger.info(f"Indexed {len(chunked_docs)} chunks from bootstrap.")
+            
             doc_store = DocumentMetadataStore()
             for src_path, file_chunks in chunks_by_file.items():
                 src_path = os.path.abspath(src_path)
@@ -346,12 +353,13 @@ def upload_document(
     sha256 = get_upload_file_sha256(file.file)
     doc_store = DocumentMetadataStore()
     
-    if doc_store.check_duplicate(filename, sha256):
-        logger.info(f"Duplicate upload detected: {filename}")
+    duplicate_doc = doc_store.get_document_by_sha256(sha256)
+    if duplicate_doc:
+        logger.info(f"Duplicate upload detected by SHA256: {filename} matches {duplicate_doc['filename']}")
         return {
             "success": True,
-            "filename": filename,
-            "chunks_created": 0,
+            "filename": duplicate_doc["filename"],
+            "chunks_created": duplicate_doc["chunks"],
             "message": "Document already exists and is indexed."
         }
         
@@ -365,6 +373,11 @@ def upload_document(
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
         logger.error(f"Failed to save file: {e}")
+        if os.path.exists(saved_filepath):
+            try:
+                os.remove(saved_filepath)
+            except Exception:
+                pass
         raise HTTPException(status_code=500, detail=f"Failed to save file on server: {str(e)}")
         
     try:
@@ -372,14 +385,16 @@ def upload_document(
         from ingestion.chunker import DocumentChunker
         
         existing_doc = doc_store.get_document(filename)
+        is_overwrite = False
         if existing_doc:
-            logger.info(f"Document {filename} already exists. Overwriting/updating vectors...")
+            logger.info(f"Document {filename} already exists with different hash. Overwriting/updating vectors...")
             vector_store_manager.delete_document(existing_doc["filepath"])
             if os.path.exists(existing_doc["filepath"]) and UPLOADS_DIR in existing_doc["filepath"]:
                 try:
                     os.remove(existing_doc["filepath"])
                 except Exception as e:
                     logger.warning(f"Failed to remove old file {existing_doc['filepath']}: {e}")
+            is_overwrite = True
                     
         loader = UniversalDocumentLoader()
         chunker = DocumentChunker(chunk_size=500, chunk_overlap=100)
@@ -388,6 +403,9 @@ def upload_document(
         chunked_docs = chunker.chunk_documents(raw_docs)
         
         if chunked_docs:
+            for doc in chunked_docs:
+                doc.metadata["source"] = filename
+                doc.metadata["filename"] = filename
             vector_store_manager.add_documents(chunked_docs)
             chunks_created = len(chunked_docs)
         else:
@@ -404,11 +422,12 @@ def upload_document(
         cache = RAGState.get_cache()
         cache.clear()
         
+        message_str = f"{filename} was updated — previous version has been replaced in the knowledge base." if is_overwrite else "Document indexed successfully."
         return {
             "success": True,
             "filename": filename,
             "chunks_created": chunks_created,
-            "message": "Document indexed successfully."
+            "message": message_str
         }
         
     except Exception as e:
@@ -495,6 +514,9 @@ def reindex_document(
         chunked_docs = chunker.chunk_documents(raw_docs)
         
         if chunked_docs:
+            for doc in chunked_docs:
+                doc.metadata["source"] = filename
+                doc.metadata["filename"] = filename
             vector_store_manager.add_documents(chunked_docs)
             chunks_created = len(chunked_docs)
         else:

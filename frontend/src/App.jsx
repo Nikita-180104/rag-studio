@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import HealthBar from './components/HealthBar';
 import ChatWindow from './components/ChatWindow';
 import TelemetryPanel from './components/TelemetryPanel';
-import { checkHealth, queryRAG, clearCache } from './api/ragApi';
+import { checkHealth, queryRAG, clearCache, listDocuments } from './api/ragApi';
 import { X, Info, CheckCircle, AlertTriangle, Database } from 'lucide-react';
 import KbPanel from './components/KbPanel';
 import './App.css';
@@ -18,9 +18,10 @@ export default function App() {
   const [health, setHealth] = useState(null);
   const [isOnline, setIsOnline] = useState(false);
   const [activeTelemetry, setActiveTelemetry] = useState(null);
-  const [isTelemetryOpen, setIsTelemetryOpen] = useState(true);
-  const [isKbOpen, setIsKbOpen] = useState(true);
+  const [isKbOpen, setIsKbOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [documents, setDocuments] = useState([]);
+
 
   // Emits a custom, premium toast alert
   const showToast = (message, type = 'info') => {
@@ -58,6 +59,22 @@ export default function App() {
       runHeartbeat(false);
     }, 10000); // 10s interval
     return () => clearInterval(interval);
+  }, [isOnline]);
+
+  // Fetches document list from backend
+  const fetchDocs = async () => {
+    try {
+      const data = await listDocuments();
+      setDocuments(data);
+    } catch (err) {
+      console.error('Failed to fetch document list.', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isOnline) {
+      fetchDocs();
+    }
   }, [isOnline]);
 
   // Clears the persistent SQLite query cache
@@ -100,10 +117,9 @@ export default function App() {
 
       setMessages((prev) => [...prev, aiMessage]);
       
-      // Update selected query telemetry panel and force sidebar open
+      // Update selected query telemetry panel
       if (res.telemetry) {
         setActiveTelemetry(res.telemetry);
-        setIsTelemetryOpen(true);
       }
     } catch (err) {
       // Check if it is a SlowAPI 429 Rate Limit error
@@ -135,60 +151,50 @@ export default function App() {
     }
   };
 
-  // Closes or opens the sidebar panel
-  const toggleTelemetry = () => {
-    setIsTelemetryOpen(!isTelemetryOpen);
-  };
-
   return (
     <div className="flex flex-col h-screen bg-darkBg text-gray-200 overflow-hidden font-sans">
       {/* Dynamic Healthbar top deck */}
-      <HealthBar health={health} isOnline={isOnline} onClearCache={handleClearCache} />
+      <HealthBar health={health} isOnline={isOnline} onClearCache={handleClearCache} documentsCount={documents.length} />
 
       {/* Main content split panel */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Knowledge Base Panel */}
+        {/* Backdrop Overlay when KB Drawer is open */}
+        {isKbOpen && (
+          <div 
+            onClick={() => setIsKbOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs z-40 transition-all duration-300 cursor-pointer"
+          />
+        )}
+
+        {/* Knowledge Base Panel (slides in as overlay) */}
         <KbPanel
           isOpen={isKbOpen}
           onClose={() => setIsKbOpen(false)}
           isOnline={isOnline}
           showToast={showToast}
+          documents={documents}
+          onRefreshDocs={fetchDocs}
         />
 
-        {/* Chat Window viewport */}
+        {/* Chat Window viewport (full width focus) */}
         <ChatWindow
           messages={messages}
           loading={loading}
           onSendMessage={handleSendMessage}
           isOnline={isOnline}
+          documents={documents}
+          onOpenKb={() => setIsKbOpen(true)}
         />
 
-        {/* Observation query telemetry sidebar panel */}
-        <TelemetryPanel
-          telemetry={activeTelemetry}
-          isOpen={isTelemetryOpen}
-          onClose={() => setIsTelemetryOpen(false)}
-        />
-
-        {/* Knowledge Base sidebar toggle trigger button */}
+        {/* Floating KB Drawer Trigger Button (bottom-left) */}
         {!isKbOpen && (
           <button
             onClick={() => setIsKbOpen(true)}
-            className="absolute left-4 top-4 z-40 bg-darkPanel text-userBubble hover:text-white border border-darkBorder hover:border-userBubble rounded-full p-2.5 shadow-xl transition-all duration-200 cursor-pointer active:scale-90"
+            className="fixed bottom-6 left-6 z-45 text-violet-400 hover:text-white border border-darkBorder hover:border-violet-500/50 rounded-full px-5 py-2.5 shadow-2xl transition-all duration-200 cursor-pointer active:scale-95 flex items-center space-x-2 font-bold text-xs uppercase tracking-wider bg-[#181C24]/90 backdrop-blur-md"
             title="Open Knowledge Base"
           >
-            <Database className="h-5 w-5" />
-          </button>
-        )}
-
-        {/* Telemetry sidebar toggle trigger button */}
-        {activeTelemetry && !isTelemetryOpen && (
-          <button
-            onClick={toggleTelemetry}
-            className="absolute right-4 top-4 z-40 bg-darkPanel text-userBubble hover:text-white border border-darkBorder hover:border-userBubble rounded-full p-2.5 shadow-xl transition-all duration-200 cursor-pointer active:scale-90"
-            title="Open Telemetry Panel"
-          >
-            <Info className="h-5 w-5" />
+            <span>📁</span>
+            <span>Knowledge Base ({documents.length})</span>
           </button>
         )}
       </div>

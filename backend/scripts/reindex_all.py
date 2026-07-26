@@ -2,7 +2,7 @@ import os
 import sys
 
 # Ensure src is in the python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from retrieval.vector_store import VectorStoreManager
 from utils.document_db import DocumentMetadataStore
@@ -42,6 +42,9 @@ def run():
             
             # 3. Add to Chroma/BM25
             if chunked_docs:
+                for doc in chunked_docs:
+                    doc.metadata["source"] = filename
+                    doc.metadata["filename"] = filename
                 vsm.add_documents(chunked_docs)
                 print(f"  Successfully added to vector store.")
                 

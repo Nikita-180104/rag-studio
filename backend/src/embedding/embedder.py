@@ -2,7 +2,7 @@ import logging
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
 # Import our typed settings
-from config import settings
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ import sys
 os.environ["TRANSFORMERS_NO_TF"] = "1"
 import logging
 
-from config import settings
+from src.config import settings
 from ingestion.document_loader import UniversalDocumentLoader
 from ingestion.chunker import DocumentChunker
 from retrieval.vector_store import VectorStoreManager

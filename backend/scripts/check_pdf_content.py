@@ -5,7 +5,7 @@ import sys
 os.environ["TRANSFORMERS_NO_TF"] = "1"
 
 # Ensure src is in the python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from ingestion.document_loader import UniversalDocumentLoader
 

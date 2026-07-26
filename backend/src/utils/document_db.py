@@ -4,7 +4,7 @@ import logging
 import hashlib
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from config import settings
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,23 @@ class DocumentMetadataStore:
                     return dict(row)
         except Exception as e:
             logger.error(f"Error querying document metadata: {e}")
+        return None
+
+    def get_document_by_sha256(self, sha256: str) -> Optional[Dict[str, Any]]:
+        """Retrieves a document metadata by sha256."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT filename, sha256, upload_date, chunks, status, filepath FROM uploaded_documents WHERE sha256 = ?",
+                    (sha256,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    return dict(row)
+        except Exception as e:
+            logger.error(f"Error querying document metadata by sha256: {e}")
         return None
 
     def check_duplicate(self, filename: str, sha256: str) -> bool:
