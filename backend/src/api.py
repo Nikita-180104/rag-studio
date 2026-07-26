@@ -18,7 +18,7 @@ import shutil
 # Ensure src is in the python path
 sys.path.append(os.path.dirname(__file__))
 
-from src.config import settings
+from config import settings
 from retrieval.vector_store import VectorStoreManager
 from generation.pipeline import GenerationPipeline
 from utils.cache import SQLiteRAGCache

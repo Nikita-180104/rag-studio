@@ -6,7 +6,7 @@ from langchain_core.documents import Document
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 
-from src.config import settings
+from config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Any
 
 from langchain_core.documents import Document
-from src.config import settings
+from config import settings
 from embedding.embedder import BGEEmbedder
 from utils.errors import RetrievalError, RAGException
 

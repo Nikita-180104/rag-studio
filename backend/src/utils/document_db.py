@@ -4,7 +4,7 @@ import logging
 import hashlib
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from src.config import settings
+from config import settings
 
 logger = logging.getLogger(__name__)
 

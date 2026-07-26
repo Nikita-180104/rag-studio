@@ -7,7 +7,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 
-from src.config import settings
+from config import settings
 from retrieval.vector_store import VectorStoreManager
 from utils.errors import RAGException, RetrievalError, GenerationError
 
