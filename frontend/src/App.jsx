@@ -184,6 +184,7 @@ export default function App() {
           isOnline={isOnline}
           documents={documents}
           onOpenKb={() => setIsKbOpen(true)}
+          onClearChat={() => setMessages([])}
         />
 
         {/* Floating KB Drawer Trigger Button (bottom-left) */}

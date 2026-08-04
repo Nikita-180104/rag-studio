@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageSquare, Loader2 } from 'lucide-react';
+import { Send, MessageSquare, Loader2, Trash2 } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 
 /**
  * Chat window containing the scrollable message log, empty-state helpers,
  * active loading status indicator, and prompt text inputs.
  */
-export default function ChatWindow({ messages, loading, onSendMessage, isOnline, documents = [], onOpenKb }) {
+export default function ChatWindow({ messages, loading, onSendMessage, isOnline, documents = [], onOpenKb, onClearChat }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
 
@@ -152,6 +152,16 @@ export default function ChatWindow({ messages, loading, onSendMessage, isOnline,
               title="Open Knowledge Base Drawer"
             >
               <span className="text-md">📁</span>
+            </button>
+          )}
+          {messages.length > 0 && onClearChat && (
+            <button
+              onClick={onClearChat}
+              disabled={loading}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/20 text-rose-400 hover:text-rose-300 transition-all duration-200 cursor-pointer active:scale-90 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Clear Chat History"
+            >
+              <Trash2 className="h-4 w-4" />
             </button>
           )}
           <button
